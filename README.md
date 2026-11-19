@@ -1,66 +1,118 @@
-# 金融业务数据
-## 业务概述
-本项目面向零售银行、消费信贷和财富管理场景构造金融行业业务数据，覆盖客户开户注册、账户管理、资金交易、理财申赎、贷款申请、授信审批、放款、还款、逾期、风控预警和催收处置等完整业务链路。
+# 银行智能客服与金融业务中台系统
 
-平台覆盖的核心业务对象：
+面向零售银行**账户与交易**场景的多端协同智能客服系统，采用**前端交互层 + AI 对话编排层 + 银行核心业务中台**三层解耦架构：
 
-- 个人客户、企业客户、实名信息、KYC 资料、客户风险等级和客户标签
-- 银行账户、银行卡、账户余额、冻结金额、账户状态和开户渠道
-- 转账、消费、充值、提现、交易流水、渠道流水和资金冻结解冻记录
-- 理财产品、产品净值、风险等级、客户风险测评、申购订单、赎回订单、理财持仓和收益记录
-- 金融产品、贷款产品、授信额度、贷款申请、审批记录和合同借据
-- 放款记录、还款计划、还款记录、提前还款、逾期记录和费用减免
-- 风控规则、风险策略、命中记录、黑名单、反欺诈事件和人工复核任务
-- 催收任务、联系记录、承诺还款、处置结果和催收绩效
-- 分支机构、员工、审批流、通知消息、客服工单和运营渠道
+- **前端交互界面（`customer-service-frontend/`）**：基于 Vue 3 + Vite 的银行主题客服工作台，支持多轮对话、快捷业务提问、实时加载客户银行账户与交易流水卡片并一键发送至会话上下文。
+- **智能客服引擎（`atguigu/`）**：基于 FastAPI + LangChain + YAML 声明式流程状态机（`flow_config/user_flows.yml`）的多轮对话系统，支持意图路由（任务办理 / 知识检索 / 闲聊 / 澄清引导）、槽位收集、任务挂起与恢复、异步 `httpx` 并发调用中台接口及 MySQL 对话状态持久化。
+- **银行核心业务中台与数据底座（`app/`、`sql/`、`generate/`）**：覆盖客户、账户、交易、理财、信贷、还款、风控、催收与运营 97 张金融业务表及完整 RESTful API，提供统一鉴权、幂等控制与全链路模拟数据生成。
 
-平台核心业务能力：
+## 系统架构
 
-- 客户管理：维护客户基础信息、实名认证、联系方式、职业收入、风险等级和 KYC 状态。
-- 账户管理：维护银行账户、银行卡、账户余额、冻结金额、账户生命周期和账户状态变更。
-- 交易管理：记录客户转账、消费、充值、提现、退款、冲正和资金流水。
-- 理财管理：维护理财产品、风险等级、客户风险测评、适当性匹配、申购赎回、份额确认、持仓收益和产品公告。
-- 信贷管理：支持贷款产品配置、授信申请、额度审批、贷款申请、合同生成和放款。
-- 还款管理：生成还款计划，记录正常还款、提前还款、部分还款、逾期还款和费用减免。
-- 风控管理：维护风险规则、风险策略、规则命中、黑名单、反欺诈事件和人工复核结果。
-- 催收管理：维护逾期案件、催收任务、联系记录、承诺还款、催收结果和处置状态。
-- 运营管理：维护机构、员工、渠道、消息通知、客服工单和业务统计。
-
-平台主链路：
-
-- 客户开户注册并完成实名认证
-- 客户开立银行账户并绑定银行卡
-- 客户发起转账、消费或账户充值
-- 客户完成风险测评并浏览理财产品
-- 系统执行适当性校验并创建理财申购订单
-- 申购确认后生成理财持仓并每日计算收益
-- 客户发起赎回并在确认后完成资金到账
-- 客户申请消费贷款并提交授信资料
-- 系统执行风控评估并生成人工审批任务
-- 审批通过后生成合同借据并完成放款
-- 系统生成分期还款计划
-- 客户按期还款或发生逾期
-- 逾期案件进入催收队列并记录处置过程
-- 还款完成后结清借据并释放相关风险状态
-
-## 快速开始
-启动 MySQL 数据库
-
-配置数据库连接参数 [`.env`](./.env)
-
-```bash
-uv sync  # 安装依赖
-
-uv run init_db.py  # 初始化数据库
-uv run -m generate.main --profile full  # 生成数据
-
-uv run -m app.main  # 启动服务
+```mermaid
+flowchart LR
+    UI["前端工作台 (Vue 3 / 5173)"] -->|"/api/*"| Chat["智能客服后端 (atguigu / 8001)"]
+    UI -->|"/bank/*"| Bank["银行中台 API (app / 8000)"]
+    Chat -->|"httpx 异步调用 (EMP000006 + MOBILE_BANK)"| Bank
+    Chat -->|"SQLAlchemy Async (dialogue_states)"| DB[("MySQL")]
+    Bank -->|"PyMySQL (97 张金融业务表)"| DB
 ```
 
-服务启动后访问 FastAPI 文档：
+## 核心客服能力
 
-- Swagger UI：`http://127.0.0.1:8000/docs`
-- OpenAPI JSON：`http://127.0.0.1:8000/openapi.json`
+- **任务型多轮对话（YAML Flow 驱动）**：
+  - `onboarding`：银行智能客服欢迎引导
+  - `account_status_query`：银行账户状态、产品类型、可用余额与冻结金额查询（对接 `GET /api/v1/accounts/{account_no}`）
+  - `transaction_history_query`：账户近期交易明细查询（对接 `GET /api/v1/accounts/{account_no}/transactions`）
+  - `account_freeze_request`：账户冻结/挂失申请多轮槽位收集与受理反馈
+  - `account_product_recommendation`：账户产品推荐流程入口
+  - `human_handoff`：转接银行人工客服坐席
+- **知识检索与上下文指代（Knowledge & Focused Object）**：
+  - 支持点击右侧**银行账户**或**交易明细**卡片作为 `FocusedObject` 注入会话，并结合 `ApiAccountProvider`（并发聚合账户详情与近期交易）与 `ApiTransactionProvider` 查询单笔流水详情。
+  - 每次查询结束后自动清理当前聚焦对象并拦截历史槽位沿用，确保后续新查询重新确认账户号或交易号。
+
+## 目录结构
+
+```text
+finance-data/
+├── app/                         # 银行核心业务中台 FastAPI 服务（端口 8000）
+├── atguigu/                     # 银行智能客服对话引擎 FastAPI 服务（端口 8001）
+│   ├── api/                     # /api/chat 与 /api/chat/history 路由
+│   ├── engine/                  # DialogueEngine 对话主控与新流程槽位过滤
+│   ├── knowledge/               # 银行知识意图与并发 Provider
+│   ├── plan/                    # TurnPlanner 意图规划与校验
+│   ├── prompts/                 # Jinja2 银行客服提示词模板
+│   └── task/                    # YAML Flow 加载、状态推进与自定义 Action
+├── customer-service-frontend/   # Vue 3 + Vite 银行智能客服前端（端口 5173）
+├── flow_config/user_flows.yml   # 银行客服任务流程与槽位定义
+├── generate/ & seeds/ & sql/    # 金融数据库建表 DDL、种子数据与数据生成器
+├── start_all.ps1                # Windows 一键启动 / 重启 / 停止三端脚本
+└── pyproject.toml               # Python 依赖配置（uv 管理）
+```
+
+## 快速开始
+
+### 1. 环境配置
+
+在项目根目录 `.env` 中配置数据库连接与大模型参数：
+
+```env
+# 银行中台与数据库配置
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=atguigu
+APP_PORT=8000
+
+# 智能客服与大模型配置
+LLM_MODEL=qwen-plus
+LLM_API_KEY=your_api_key
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+DATABASE_URL=mysql+aiomysql://root:your_password@127.0.0.1:3306/atguigu
+BANK_API_BASE_URL=http://127.0.0.1:8000
+APP_HOST=127.0.0.1
+```
+
+### 2. 安装依赖与初始化数据
+
+```bash
+# 安装 Python 后端依赖
+uv sync
+
+# 初始化银行数据库表与测试数据（如库中已有数据可跳过）
+uv run init_db.py
+uv run -m generate.main --profile smoke
+
+# 安装前端依赖
+cd customer-service-frontend && npm install
+```
+
+> 确保目标 MySQL 库中已创建客服会话状态表 `dialogue_states`（`sender_id VARCHAR(255) PRIMARY KEY`, `state_json MEDIUMTEXT NOT NULL`）。
+
+### 3. 启动服务
+
+**方式一：Windows 一键启动（推荐）**
+
+```powershell
+.\start_all.ps1           # 启动全部三端服务
+.\start_all.ps1 -Restart  # 重启全部三端服务
+.\start_all.ps1 -Stop     # 停止全部三端服务
+```
+
+**方式二：分终端手动启动**
+
+```bash
+uv run -m app.main                              # 1. 银行中台 (8000)
+uv run -m atguigu.main                          # 2. 银行智能客服 (8001)
+cd customer-service-frontend && npm run dev     # 3. 前端工作台 (5173)
+```
+
+### 4. 访问地址
+
+- **前端聊天工作台**：`http://127.0.0.1:5173`（默认测试客户号 `CUS00000001`）
+- **智能客服 Swagger 文档**：`http://127.0.0.1:8001/docs`
+- **银行中台 Swagger 文档**：`http://127.0.0.1:8000/docs`
+- **银行中台 OpenAPI JSON**：`http://127.0.0.1:8000/openapi.json`
 
 ## 数据定义
 ### 通用约束
