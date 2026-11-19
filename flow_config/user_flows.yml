@@ -1,53 +1,48 @@
 slots:
-  order_number:
+  account_no:
     type: text
-    label: 订单号
-    description: 用户的订单号
+    label: 银行账户号
+    description: 用户的银行账户号
 
-  order_status:
+  account_status:
     type: text
-    label: 订单状态
-    description: 订单当前状态
+    label: 账户状态
+    description: 银行账户当前状态
 
-  order_summary:
+  account_summary:
     type: text
-    label: 订单摘要
-    description: 订单摘要信息
+    label: 账户摘要
+    description: 银行账户余额、冻结金额及产品等摘要信息
 
-  tracking_number:
+  transaction_no:
     type: text
-    label: 物流单号
-    description: 物流单号
+    label: 交易流水号
+    description: 当前咨询交易的唯一标识
 
-  logistics_company:
+  transaction_count:
     type: text
-    label: 物流公司
-    description: 物流公司名称
+    label: 交易笔数
+    description: 查询到的账户交易总笔数
 
-  logistics_status:
+  transaction_summary:
     type: text
-    label: 物流进度
-    description: 物流当前进度
+    label: 交易明细摘要
+    description: 账户近期交易明细的展示文本
 
-  product_id:
+  freeze_reason:
     type: text
-    label: 商品ID
-    description: 当前咨询商品的唯一标识
-
-  refund_reason:
-    type: text
-    label: 退款原因
-    description: 申请退款的原因
+    label: 冻结或挂失原因
+    description: 申请账户冻结或挂失的原因
 
   recommendation_summary:
     type: text
     label: 推荐结果
-    description: 相似商品推荐结果的展示文本
+    description: 账户产品推荐结果的展示文本
 
 flows:
   onboarding:
     name: 欢迎引导
-    description: 在聊天窗口初次打开时欢迎用户，并介绍助手可处理的电商服务。这个 flow 通常由系统主动触发。
+    description: 在聊天窗口初次打开时欢迎用户，并介绍助手可处理的银行账户与交易服务。这个 flow 通常由系统主动触发。
     steps:
       - id: start
         type: start
@@ -56,130 +51,125 @@ flows:
       - id: respond
         type: response
         template:
-          text: "你好，这里是 Atguigu 电商助手。我可以帮你查订单状态、查物流、了解商品信息，或者提交退款申请。"
+          text: "你好，这里是智能银行客服助手。我可以帮你查账户状态和余额、查交易明细、了解账户或交易信息，也可以帮你提交账户冻结或挂失申请。"
         next: end
 
       - id: end
         type: end
         next: []
 
-  order_status_query:
-    name: 订单状态查询
-    description: 帮用户查询订单当前的处理状态，例如待付款、待发货、已发货或已完成。
+  account_status_query:
+    name: 账户状态与余额查询
+    description: 帮用户查询银行账户当前状态（如正常、已冻结、休眠、已销户）以及账户余额、冻结金额和账户产品信息。
     steps:
       - id: start
         type: start
-        next: ask_order_number
+        next: ask_account_no
 
-      - id: ask_order_number
+      - id: ask_account_no
         type: collect
-        slot_name: order_number
+        slot_name: account_no
         template:
-          text: "请告诉我你的订单号。"
-        next: lookup_order_status
+          text: "请告诉我你的银行账户号。"
+        next: lookup_account_status
 
-      - id: lookup_order_status
+      - id: lookup_account_status
         type: action
-        action: action_lookup_order_status
-        next: show_order_status
+        action: action_lookup_account_status
+        next: show_account_status
 
-      - id: show_order_status
+      - id: show_account_status
         type: response
         template:
-          text: "订单{{ slots.order_number }}
-          当前状态是：{{ slots.order_status }}。
-          {{ slots.order_summary }}"
+          text: "账户{{ slots.account_no }}当前状态是：{{ slots.account_status }}。{{ slots.account_summary }}"
         next: end
 
       - id: end
         type: end
         next: []
 
-  logistics_tracking:
-    name: 物流查询
-    description: 帮用户查询订单物流进度、物流单号和配送公司信息。
+  transaction_history_query:
+    name: 账户交易明细查询
+    description: 帮用户查询指定银行账户的近期交易记录、交易金额、交易类型及交易状态。
     steps:
       - id: start
         type: start
-        next: ask_order_number
+        next: ask_account_no
 
-      - id: ask_order_number
+      - id: ask_account_no
         type: collect
-        slot_name: order_number
+        slot_name: account_no
         template:
-          text: "请告诉我你的订单号。"
-        next: lookup_logistics
+          text: "请告诉我需要查询交易明细的银行账户号。"
+        next: lookup_transactions
 
-      - id: lookup_logistics
+      - id: lookup_transactions
         type: action
-        action: action_lookup_logistics
-        next: show_logistics
+        action: action_lookup_transactions
+        next: show_transactions
 
-      - id: show_logistics
+      - id: show_transactions
         type: response
         template:
-          text: "订单{{ slots.order_number }}
-          由{{ slots.logistics_company }}配送，
-          物流单号是{{ slots.tracking_number }}。
-          当前进度：{{ slots.logistics_status }}。"
+          text: "账户{{ slots.account_no }}共查询到 {{ slots.transaction_count }} 笔交易。{{ slots.transaction_summary }}"
         next: end
 
       - id: end
         type: end
         next: []
 
-  refund_request:
-    name: 退款申请
-    description: 帮用户提交简单的退款申请，收集订单号和退款原因。
+  account_freeze_request:
+    name: 账户冻结与挂失申请
+    description: 帮用户提交银行账户冻结或挂失申请，收集银行账户号和冻结挂失原因。
     steps:
       - id: start
         type: start
-        next: ask_order_number
+        next: ask_account_no
 
-      - id: ask_order_number
+      - id: ask_account_no
         type: collect
-        slot_name: order_number
+        slot_name: account_no
         template:
-          text: "请告诉我你的订单号。"
-        next: ask_refund_reason
+          text: "请告诉我需要申请冻结或挂失的银行账户号。"
+        next: ask_freeze_reason
 
-      - id: ask_refund_reason
+      - id: ask_freeze_reason
         type: collect
-        slot_name: refund_reason
+        slot_name: freeze_reason
         template:
-          text: "请简单说一下退款原因。"
-        next: refund_submitted
+          text: "请简单说明一下申请冻结或挂失的原因。"
+        next: freeze_submitted
 
-      - id: refund_submitted
+      - id: freeze_submitted
         type: response
         template:
-          text: "好的，订单{{ slots.order_number }}的退款申请已提交，原因是：{{ slots.refund_reason }}。后续会尽快为你处理。"
+          text: "好的，账户{{ slots.account_no }}的冻结/挂失申请已提交，原因是：{{ slots.freeze_reason }}。后续会尽快为你处理。"
         next: end
 
       - id: end
         type: end
         next: []
 
-  similar_product_recommendation:
-    name: 相似商品推荐
-    description: 基于当前商品为用户推荐类似商品。当前版本先保留流程入口，具体推荐能力后续接入。
+  account_product_recommendation:
+    name: 账户产品推荐
+    description: 基于当前账户为用户推荐适配的银行账户产品。当前版本先保留流程入口，具体推荐能力后续接入。
     steps:
       - id: start
         type: start
         next:
-          - if: "slots.get('product_id')"
+          - if: "slots.get('account_no')"
             then: respond
-          - else: missing_product_context
+          - else: missing_account_context
 
-      - id: missing_product_context
+      - id: missing_account_context
         type: response
         template:
-          text: "请先选择一个商品，再继续咨询。"
+          text: "请先选择一个银行账户，再继续咨询账户产品推荐。"
         next: end
 
       - id: respond
         type: action
-        action: action_recommend_similar_products
+        action: action_recommend_account_products
         next: show_recommendation
 
       - id: show_recommendation
@@ -194,7 +184,7 @@ flows:
 
   human_handoff:
     name: 人工客服
-    description: 将当前对话转交给人工客服处理。
+    description: 将当前对话转交给银行人工客服坐席处理。
     steps:
       - id: start
         type: start
@@ -203,7 +193,7 @@ flows:
       - id: respond
         type: response
         template:
-          text: "好的，我来为你转接人工客服，请稍等。"
+          text: "好的，我来为你转接银行人工客服坐席，请稍等。"
         next: end
 
       - id: end

@@ -8,7 +8,7 @@ from atguigu.chitchat.chit_chat import ChitChatHandler
 from atguigu.clarify.clarify_response import ClarifyResponse
 from atguigu.engine.dialogue_engine import DialogueEngine
 from atguigu.knowledge.knowledge_handler import KnowledgeHandler
-from atguigu.knowledge.provider import ApiProductProvider, ApiOrderProvider, FAQProvider, RAGProvider
+from atguigu.knowledge.provider import ApiTransactionProvider, ApiAccountProvider, FAQProvider, RAGProvider
 from atguigu.knowledge.registry import KnowledgeProviderRegistry
 from atguigu.knowledge.responder import KnowledgeResponder
 from atguigu.plan.turn_plan_validator import TurnPlanValidator
@@ -66,8 +66,8 @@ def build_engine()->DialogueEngine:
 
     knowledge_registry = KnowledgeProviderRegistry(
         provider_objects=[
-            ApiProductProvider(),
-            ApiOrderProvider(),
+            ApiTransactionProvider(),
+            ApiAccountProvider(),
             FAQProvider(),
             RAGProvider()
         ]

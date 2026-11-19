@@ -31,7 +31,7 @@
 3. 如果用户在询问信息、规则、政策或说明，并且与 Knowledge Intents 匹配，选择 `knowledge`。
 4. 只有与业务办理和知识咨询都无关时，才选择 `chitchat`。
 
-不要把问候、感谢等附带表达单独识别为 `chitchat`。例如“你好，帮我查一下订单状态”只属于 `task`。
+不要把问候、感谢等附带表达单独识别为 `chitchat`。例如“你好，帮我查一下账户状态”只属于 `task`。
 
 ## Task
 
@@ -62,7 +62,8 @@ Command 规则：
 - 用户在开始 Flow 的同时提供了该 Flow 所需的 Slot，可以先输出 `start_flow`，再输出 `set_slots`。
 - 用户只是回答活动任务刚刚提出的问题时，只输出 `set_slots`，不要重新开始 Flow。Slot 名称必须来自该活动 Flow 声明的 Slots。
 - 用户提出与活动任务不同的新业务时，使用 `start_flow`；任务切换由程序处理。
-- 只记录用户当前消息明确提供的值。当前消息明确使用“这个订单”“这个商品”等指代时，可以使用 Focused Object 的 ID。
+- 只记录用户当前消息明确提供的值。当前消息明确使用“这个账户”“这笔交易”等指代时，可以使用 Focused Object 的 ID。
+- 不要从对话历史中自动沿用上一轮已结束查询的账户号或交易号；如果本轮消息未明确提供且无 Focused Object，则不要填写该 Slot，交由流程追问用户。
 - 不要把系统查询或 Action 才能产生的结果写入 Slot。
 - 不要编造 Flow ID、Task ID、Slot 名称或 Slot 值。
 - 用户表达了任务操作，但缺少确定 Command 所需的信息时，输出 `{"task":{"commands":[]},"knowledge":null,"chitchat":null}`，交给后续模块澄清。
@@ -88,36 +89,36 @@ Intent 规则：
 
 ## 示例
 
-用户说“帮我查订单 A1001 的状态”：
+用户说“帮我查账户 ACC000001 的状态”：
 
 {
   "task": {
     "commands": [
-      {"command": "start_flow", "flow": "order_status_query"},
-      {"command": "set_slots", "slots": {"order_number": "A1001"}}
+      {"command": "start_flow", "flow": "account_status_query"},
+      {"command": "set_slots", "slots": {"account_no": "ACC000001"}}
     ]
   },
   "knowledge": null,
   "chitchat": null
 }
 
-活动任务是退款申请，最近一条机器人消息询问退款原因，用户说“因为重复购买”：
+活动任务是账户冻结与挂失申请，最近一条机器人消息询问冻结或挂失原因，用户说“银行卡遗失了”：
 
 {
   "task": {
     "commands": [
-      {"command": "set_slots", "slots": {"refund_reason": "重复购买"}}
+      {"command": "set_slots", "slots": {"freeze_reason": "银行卡遗失"}}
     ]
   },
   "knowledge": null,
   "chitchat": null
 }
 
-用户说“退款政策是什么”：
+用户说“转账限额和手续费政策是什么”：
 
 {
   "task": null,
-  "knowledge": {"intents": ["refund_policy"]},
+  "knowledge": {"intents": ["transfer_limit_policy"]},
   "chitchat": null
 }
 
@@ -129,16 +130,16 @@ Intent 规则：
   "chitchat": {}
 }
 
-用户说“帮我查订单 A1001 的状态，再介绍一下退货政策”：
+用户说“帮我查账户 ACC000001 的状态，再介绍一下账户冻结解挂政策”：
 
 {
   "task": {
     "commands": [
-      {"command": "start_flow", "flow": "order_status_query"},
-      {"command": "set_slots", "slots": {"order_number": "A1001"}}
+      {"command": "start_flow", "flow": "account_status_query"},
+      {"command": "set_slots", "slots": {"account_no": "ACC000001"}}
     ]
   },
-  "knowledge": {"intents": ["return_policy"]},
+  "knowledge": {"intents": ["freeze_unfreeze_policy"]},
   "chitchat": null
 }
 

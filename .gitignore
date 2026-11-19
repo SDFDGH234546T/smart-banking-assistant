@@ -16,6 +16,12 @@ wheels/
 
 # Local config and logs
 .env
+.env.*
+!.env.example
 logs/
 *.log
 seeds/raw/
+
+# Frontend dependencies & cache
+node_modules/
+.vite/

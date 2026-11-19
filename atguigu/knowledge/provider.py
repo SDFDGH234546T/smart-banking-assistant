@@ -1,6 +1,6 @@
 """
-这个模块类型TaskHandler里面action
-发送远程调用，调用中台接口得到数据
+这个模块类似TaskHandler里面action
+发送远程调用，调用银行中台接口得到数据
 """
 import asyncio
 import json
@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from atguigu.conf.config import settings
 from atguigu.domain.message import UserMessage
 from atguigu.domain.state import DialogueState
-from atguigu.task.action.base import ActionResult
-from atguigu.task.task_handler import TaskHandler
 from atguigu.utils import httpx_client
 
 
@@ -20,67 +18,74 @@ from atguigu.utils import httpx_client
 class KnowledgeChunk:
     content: str = ""
 
+
 # 创建基类，定义属性和抽象方法
 class KnowledgeProvider(ABC):
     # 属性
-    provider_id:str=""
+    provider_id: str = ""
 
     # 抽象方法
     @abstractmethod
-    async def execute(self,state:DialogueState,
-                      user_message:UserMessage) -> list[KnowledgeChunk]:
+    async def execute(self, state: DialogueState,
+                      user_message: UserMessage) -> list[KnowledgeChunk]:
         pass
 
-# 商品信息咨询
-class ApiProductProvider(KnowledgeProvider):
-    provider_id="api.product"
+
+# 单笔交易信息咨询  api.transaction
+class ApiTransactionProvider(KnowledgeProvider):
+    provider_id = "api.transaction"
 
     # 远程调用
-    async def execute(self,state:DialogueState,
-                      user_message:UserMessage) -> list[KnowledgeChunk]:
-        # 获取商品id
-        product_id = state.shared.focused_object.id
-        # 远程调用
-        url = f"{settings.commerce_api_base_url}/products/{product_id}"
+    async def execute(self, state: DialogueState,
+                      user_message: UserMessage) -> list[KnowledgeChunk]:
+        if not state.shared.focused_object:
+            return [KnowledgeChunk(content="未指定当前咨询的交易流水号")]
+        transaction_no = state.shared.focused_object.id
+        base_url = settings.bank_api_base_url.rstrip("/")
+        url = f"{base_url}/api/v1/transactions/{transaction_no}"
         response = await httpx_client.http_client.get(url)
-        data = response.json().get("data",{})
+        payload = response.json()
+        data = payload.get("data") or {"message": payload.get("message", "未查询到交易详情")}
         chunk = json.dumps(data, ensure_ascii=False)
         return [KnowledgeChunk(content=chunk)]
 
-# 订单信息咨询  api.order
-class ApiOrderProvider(KnowledgeProvider):
-    provider_id = "api.order"
+
+# 银行账户信息咨询  api.account
+class ApiAccountProvider(KnowledgeProvider):
+    provider_id = "api.account"
 
     async def execute(self, state: DialogueState,
                       user_message: UserMessage) -> list[KnowledgeChunk]:
-        order_id = state.shared.focused_object.id
-        # 拼接远程调用路径
-        # 得到订单信息，调用两个中台接口
-        # 调用查询订单详情接口
-        order_url = f"{settings.commerce_api_base_url}/orders/{order_id}"
-        # 调用查询订单物流接口
-        logis_url = f"{settings.commerce_api_base_url}/orders/{order_id}/logistics"
-        # 远程调用，因为两个接口需要调用，使用并行方式实现
-        ## 返回结果和传入参数顺序相关的
-        order_info,logis_info = await asyncio.gather(
-            httpx_client.http_client.get(order_url),
-            httpx_client.http_client.get(logis_url)
+        if not state.shared.focused_object:
+            return [KnowledgeChunk(content="未指定当前咨询的银行账户号")]
+        account_no = state.shared.focused_object.id
+        base_url = settings.bank_api_base_url.rstrip("/")
+        # 调用查询账户详情接口
+        account_url = f"{base_url}/api/v1/accounts/{account_no}"
+        # 调用查询账户近期交易明细接口
+        txns_url = f"{base_url}/api/v1/accounts/{account_no}/transactions"
+        # 远程调用，使用并行方式实现
+        account_info, txns_info = await asyncio.gather(
+            httpx_client.http_client.get(account_url),
+            httpx_client.http_client.get(txns_url, params={"page_size": 5}),
         )
 
-        # list[KnowledgeChunk]
-        chunk = json.dumps({
-            "order_detail": order_info.json()["data"],
-            "logis_detail": logis_info.json()["data"],
-        }, ensure_ascii=False
+        account_payload = account_info.json()
+        txns_payload = txns_info.json()
+        chunk = json.dumps(
+            {
+                "account_detail": account_payload.get("data") or {"message": account_payload.get("message")},
+                "recent_transactions": txns_payload.get("data") or {"message": txns_payload.get("message")},
+            },
+            ensure_ascii=False,
         )
         return [KnowledgeChunk(content=chunk)]
 
-# 5 faq
+
+# faq
 ## 查询固定问题和固定答案
-# 把这些问题和对应答案存储数据库里面，使用mysql，向量数据库
-# 根据问题到数据库找到匹配问题，返回问题对应答案
 class FAQProvider(KnowledgeProvider):
-    provider_id = 'faq.default'
+    provider_id = "faq.default"
 
     async def execute(self, state: DialogueState,
                       user_message: UserMessage) -> list[KnowledgeChunk]:
@@ -89,9 +94,9 @@ class FAQProvider(KnowledgeProvider):
 
 
 # rag
-## 调用智库里面查询接口得到结果
+## 调用知识库里面查询接口得到结果
 class RAGProvider(KnowledgeProvider):
-    provider_id = 'rag.default'
+    provider_id = "rag.default"
 
     async def execute(self, state: DialogueState,
                       user_message: UserMessage) -> list[KnowledgeChunk]:

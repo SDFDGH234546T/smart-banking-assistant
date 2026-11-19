@@ -8,46 +8,51 @@ from dataclasses import dataclass, field
 # 1 封装知识检索数据
 @dataclass
 class KnowledgeIntent:
-    id: str  # 意图识别值    product_info
-    description: str # llm更好理解id含义  "商品信息咨询"
+    id: str  # 意图识别值    account_info
+    description: str  # llm更好理解id含义  "账户信息咨询"
     # 问题答案位置 provider类里面属性值对应
-    provider_ids: list[str]=field(default_factory=list)
-    # 规则：查询商品 、 订单 信息都需要从对象获取值
+    provider_ids: list[str] = field(default_factory=list)
+    # 规则：查询账户、交易信息都需要从聚焦对象获取值
     requires_object: str | None = None
 
-# 2 创建字典   product_info
-KNOWLEDGE_INTENTS: dict[str, KnowledgeIntent] = {
-    "product_info": KnowledgeIntent(
-        id="product_info",
-        description="商品信息咨询",
-        provider_ids=["api.product"],
-        requires_object="product",
-    ),
-    "order_info": KnowledgeIntent(
-        id="order_info",
-        description="订单信息咨询",
-        provider_ids=["api.order"],
-        requires_object="order",
-    ),
 
-    "refund_policy": KnowledgeIntent(
-        id="refund_policy", description="退款政策咨询",
+# 2 创建字典
+KNOWLEDGE_INTENTS: dict[str, KnowledgeIntent] = {
+    "account_info": KnowledgeIntent(
+        id="account_info",
+        description="银行账户信息咨询（包括账户状态、余额、冻结金额、所属产品及近期交易）",
+        provider_ids=["api.account"],
+        requires_object="account",
+    ),
+    "transaction_info": KnowledgeIntent(
+        id="transaction_info",
+        description="单笔交易流水详情咨询（包括交易状态、金额、渠道流水及对账状态）",
+        provider_ids=["api.transaction"],
+        requires_object="transaction",
+    ),
+    "transfer_limit_policy": KnowledgeIntent(
+        id="transfer_limit_policy",
+        description="转账限额与手续费率政策咨询",
         provider_ids=["faq.default", "rag.default"],
     ),
-    "return_policy": KnowledgeIntent(
-        id="return_policy", description="退货政策咨询",
+    "freeze_unfreeze_policy": KnowledgeIntent(
+        id="freeze_unfreeze_policy",
+        description="账户冻结、挂失与解冻解挂政策咨询",
         provider_ids=["faq.default", "rag.default"],
     ),
-    "shipping_policy": KnowledgeIntent(
-        id="shipping_policy", description="配送政策咨询",
+    "account_opening_policy": KnowledgeIntent(
+        id="account_opening_policy",
+        description="开户条件、账户分类与绑卡规则咨询",
         provider_ids=["faq.default", "rag.default"],
     ),
-    "platform_rule": KnowledgeIntent(
-        id="platform_rule", description="平台规则咨询",
+    "risk_control_policy": KnowledgeIntent(
+        id="risk_control_policy",
+        description="账户风控规则与异常交易反欺诈说明咨询",
         provider_ids=["rag.default"],
     ),
-    "general_ecommerce_info": KnowledgeIntent(
-        id="general_ecommerce_info", description="电商通用信息咨询",
+    "general_banking_info": KnowledgeIntent(
+        id="general_banking_info",
+        description="银行通用业务与服务信息咨询",
         provider_ids=["faq.default", "rag.default"],
     ),
 }

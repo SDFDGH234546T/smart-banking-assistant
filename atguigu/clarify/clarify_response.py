@@ -53,17 +53,17 @@ class ClarifyResponse:
 
         if reason is ClarifyReason.MISSING_KNOWLEDGE_INTENT:
             return (
-                "你是想了解商品信息、订单信息，"
-                "还是售后配送规则呢？"
+                "你是想了解账户信息、交易详情，"
+                "还是转账限额、冻结挂失等银行规则呢？"
             )
 
         if reason is ClarifyReason.MISSING_TRACK:
-            return "你是想先处理业务问题，还是先咨询信息呢？"
+            return "你是想先办理银行业务，还是先咨询规则信息呢？"
 
         if reason is ClarifyReason.MISSING_TASK_COMMANDS:
             return (
-                "你这次是想办理什么业务呢？"
-                "比如查订单、查物流，或者申请退款。"
+                "你这次是想办理什么银行业务呢？"
+                "比如查账户状态和余额、查交易明细，或者申请账户冻结挂失。"
             )
 
         if reason is ClarifyReason.INVALID_TASK_COMMAND:
@@ -75,26 +75,26 @@ class ClarifyResponse:
         if reason is ClarifyReason.UNKNOWN_KNOWLEDGE_INTENT:
             return (
                 "我暂时无法识别这个咨询方向，"
-                "你可以具体说说想了解的商品、订单或售后问题。"
+                "你可以具体说说想了解的账户、交易或银行政策问题。"
             )
 
         if reason is ClarifyReason.OBJECT_REQUIRES_INTENT:
             focused_object = state.shared.focused_object
             if (
                     focused_object is not None
-                    and focused_object.type == "order"
+                    and focused_object.type == "account"
             ):
                 return (
-                    "我已经收到这个订单了。你想查订单状态、"
-                    "查物流，还是申请退款呢？"
+                    "我已经收到这个银行账户了。你想查账户状态和余额、"
+                    "查交易明细，还是申请冻结挂失呢？"
                 )
             if (
                     focused_object is not None
-                    and focused_object.type == "product"
+                    and focused_object.type == "transaction"
             ):
                 return (
-                    "我已经收到这个商品了。你想了解它的商品信息、"
-                    "发货情况，还是售后相关问题呢？"
+                    "我已经收到这笔交易记录了。你想了解它的交易详情、"
+                    "对账状态，还是相关风控或限额规则呢？"
                 )
 
         return (

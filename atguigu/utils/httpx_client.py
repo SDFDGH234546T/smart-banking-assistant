@@ -16,7 +16,13 @@ http_client: AsyncClient | None = None
 # 创建http_client方法
 def init_http_client():
     global http_client
-    http_client = AsyncClient(timeout=10.0)
+    http_client = AsyncClient(
+        timeout=10.0,
+        headers={
+            "Authorization": "Bearer EMP000006",
+            "X-Channel-Code": "MOBILE_BANK",
+        },
+    )
 
 # 关闭http_client方法
 async def close_http_client():
@@ -26,7 +32,7 @@ async def close_http_client():
 async def test():
     init_http_client()
     result = await http_client.get(
-        "http://127.0.0.1:18081/orders/A20260408002/status")
+        "http://127.0.0.1:8000/api/v1/accounts/ACC000001")
     print(result.json())
     await close_http_client()
 

@@ -8,7 +8,7 @@ from atguigu.clarify.clarify_response import ClarifyResponse
 from atguigu.domain.message import UserMessage, ProcessResult, BotMessage, MessageType
 from atguigu.domain.state import DialogueState, Turn, FocusedObject
 from atguigu.knowledge.knowledge_handler import KnowledgeHandler
-from atguigu.plan.command import SetSlotsCommand
+from atguigu.plan.command import SetSlotsCommand, StartFlowCommand
 from atguigu.plan.turn_plan_validator import TurnPlanValidator
 from atguigu.plan.turn_planner import TurnPlanner
 from atguigu.prompts.models import TurnPlan, TurnPlanValidationResult, ClarifyReason
@@ -145,10 +145,15 @@ class DialogueEngine:
 
         # 成功，根据识别方向执行不同处理器
         if turn_plan.task: # 任务流程方向
+            commands = self._filter_history_slots_on_new_flow(
+                commands=turn_plan.task.commands,
+                state=state,
+                user_message=user_message,
+            )
             messages:list[BotMessage]= await self.task_handler.handle(
                 state=state,
                 user_message=user_message,
-                commands=turn_plan.task.commands
+                commands=commands
             )
             return messages
 
@@ -158,6 +163,8 @@ class DialogueEngine:
                 state=state,
                 user_message=user_message
             )
+            # 一次知识咨询结束后清空聚焦对象，避免后续查询继续沿用
+            state.shared.focused_object = None
             return messages
 
         else: # 闲聊方向
@@ -165,6 +172,36 @@ class DialogueEngine:
                 state=state,
                 user_message=user_message,
             )
+
+    def _filter_history_slots_on_new_flow(
+        self,
+        commands: list,
+        state: DialogueState,
+        user_message: UserMessage,
+    ) -> list:
+        """开启新流程时，防止大模型从历史对话中带出上一轮的账户号或交易号。"""
+        has_start_flow = any(isinstance(cmd, StartFlowCommand) for cmd in commands)
+        if not has_start_flow:
+            return commands
+
+        user_text = (user_message.text or "").lower()
+        focused_id = state.shared.focused_object.id if state.shared.focused_object else None
+        filtered = []
+        for cmd in commands:
+            if isinstance(cmd, SetSlotsCommand):
+                kept_slots = {}
+                for slot_name, slot_val in cmd.slots.items():
+                    if slot_name in {"account_no", "transaction_no"}:
+                        val_str = str(slot_val)
+                        if val_str.lower() in user_text or (focused_id and val_str == focused_id):
+                            kept_slots[slot_name] = slot_val
+                    else:
+                        kept_slots[slot_name] = slot_val
+                if kept_slots:
+                    filtered.append(SetSlotsCommand(command="set_slots", slots=kept_slots))
+            else:
+                filtered.append(cmd)
+        return filtered
 
     # 对象类型消息处理
     async def _execute_object_message(self, state,
@@ -176,10 +213,10 @@ class DialogueEngine:
 
         # 2 判断当前对象类型消息是否可以匹配任务槽位数据
         if self._is_can_fill_slots(state): # 可以匹配
-            if user_message.object.type=='order':
-                slots={'order_number':user_message.object.id}
+            if user_message.object.type=='account':
+                slots={'account_no':user_message.object.id}
             else:
-                slots={'product_id':user_message.object.id}
+                slots={'transaction_no':user_message.object.id}
             # 创建commands
             # # | `set_slots`   | `{"command": "set_slots", "slots": {"<slot_name>": "<value>"}}`
             command = SetSlotsCommand(
@@ -220,15 +257,15 @@ class DialogueEngine:
         if not isinstance(step,CollectSlotStep):
             return False
 
-        ## 如果需要订单号，对象类型是order类型，否则product类型
+        ## 如果需要银行账户号，对象类型是account类型，交易流水号对应transaction类型
         ### 获取collect步骤 slot_name槽位名称
         slot_name = step.slot_name
-        ### 获取对象类型消息 order
+        ### 获取对象类型消息 account / transaction
         object_type = state.shared.focused_object.type
 
         # 匹配判断
-        if slot_name == 'order_number' and object_type=='order':
+        if slot_name == 'account_no' and object_type=='account':
             return True
-        if slot_name == 'product_id' and object_type=='product':
+        if slot_name == 'transaction_no' and object_type=='transaction':
             return True
         return False

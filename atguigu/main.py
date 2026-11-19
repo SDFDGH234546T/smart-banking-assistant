@@ -12,7 +12,7 @@ def mian():
     init_http_client()
     uvicorn.run('atguigu.api.app:app',
                 host=settings.app_host,
-                port=settings.app_port,
+                port=settings.chat_app_port,
                 )
     # reload=True,
 

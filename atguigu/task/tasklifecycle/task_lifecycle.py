@@ -1,7 +1,6 @@
 """
 这个模块作用，根据commandProcessor组件返回任务状态变化对象列表生成不同中文提示
 """
-from anyio import TaskFailed
 
 from atguigu.domain.message import BotMessage
 from atguigu.lifecycle.models import TaskEvent, TaskStarted, TaskSwitched, TaskResumed, TaskCanceled

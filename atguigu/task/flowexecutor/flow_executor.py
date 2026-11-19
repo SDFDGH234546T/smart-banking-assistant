@@ -113,6 +113,8 @@ class FlowExecutor:
             if isinstance(step,EndFlowStep):
                 # 把state里面active清空
                 state.tasks.active = None
+                # 一次流程结束后清空聚焦对象，避免后续查询自动沿用上一次的账户号或交易号
+                state.shared.focused_object = None
                 return bot_messages
 
 
@@ -182,21 +184,21 @@ class FlowExecutor:
             return
 
         # 判断，因为我们项目当前对象类型消息只有两种
-        # type=order  对应槽位 order_number
-        if (step.slot_name=='order_number'
-             and state.shared.focused_object.type=='order'):
-            order_number = state.shared.focused_object.id
+        # type=account  对应槽位 account_no
+        if (step.slot_name=='account_no'
+             and state.shared.focused_object.type=='account'):
+            account_no = state.shared.focused_object.id
             # 放到state的active里面
             state.tasks.active.slots.update(
-                            {step.slot_name:order_number})
+                            {step.slot_name:account_no})
             return
 
-        # type=product 对应槽位 product_id
-        if (step.slot_name=='product_id'
-             and state.shared.focused_object.type=='product'):
-            order_number = state.shared.focused_object.id
+        # type=transaction 对应槽位 transaction_no
+        if (step.slot_name=='transaction_no'
+             and state.shared.focused_object.type=='transaction'):
+            transaction_no = state.shared.focused_object.id
             # 放到state的active里面
             state.tasks.active.slots.update(
-                            {step.slot_name:order_number})
+                            {step.slot_name:transaction_no})
             return
 
