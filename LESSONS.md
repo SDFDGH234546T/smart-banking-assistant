@@ -1,0 +1,2 @@
+- **[环境/Pyright]** 直接运行 `.venv\Scripts\pyright.exe` 报 `reportMissingImports`（无法解析 `pydantic_settings`） → Pyright 未指定 `.venv` 解释器而使用了系统全局 Python → 执行时显式传入 `--pythonpath .venv\Scripts\python.exe`。
+- **[环境/Asyncio]** 在 Windows 沙盒内直接运行 `asyncio.run` 或 `@pytest.mark.anyio` 异步单测会挂起 → 沙盒网络隔离拦截了事件循环初始化的本地 `socketpair` → 运行含异步事件循环的 `pytest` 时需使用 `BypassSandbox: true`（或在沙盒外执行）。
