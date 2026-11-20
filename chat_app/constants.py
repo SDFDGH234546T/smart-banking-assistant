@@ -61,6 +61,8 @@ TICKET_TYPES: frozenset[str] = frozenset(
 # S5 转人工建单默认值：无具体关联业务对象时 related_type 传 "none"
 DEFAULT_TICKET_TYPE = TICKET_TYPE_GENERAL
 DEFAULT_TICKET_RELATED_TYPE = "none"
+# 中台建单接口 current_employee 会优先读取 X-Operator-No，客户态缺省会回退用客户号查员工表而报 403
+DEFAULT_OPERATOR_NO = "EMP000001"
 
 # --- 确定性确认 / 取消关键词集合 ---
 # 由代码层优先拦截，不依赖 LLM 语义猜测，确保敏感写操作（冻结/挂失）确认与取消绝对可靠
@@ -68,7 +70,29 @@ CONFIRM_KEYWORDS: frozenset[str] = frozenset(
     {"确认", "确定", "是的", "同意", "办理", "好的"}
 )
 CANCEL_KEYWORDS: frozenset[str] = frozenset(
-    {"取消", "不用了", "算了", "放弃", "不办了"}
+    {
+        "取消",
+        "取消办理",
+        "不用了",
+        "算了",
+        "放弃",
+        "不办了",
+        "不办理了",
+        "不想办了",
+        "不想办理了",
+        "先不办了",
+        "暂不办理",
+        "退出",
+    }
+)
+# 短句包含以下取消短语且非疑问句时，也视为确定性取消（防止口语变体漏网）
+CANCEL_SUBSTRINGS: tuple[str, ...] = (
+    "不想办",
+    "不办理",
+    "不办了",
+    "取消办理",
+    "放弃办理",
+    "暂不办理",
 )
 
 # --- NLU 意图分类与任务白名单 ---

@@ -1,2 +1,4 @@
 - **[环境/Pyright]** 直接运行 `.venv\Scripts\pyright.exe` 报 `reportMissingImports`（无法解析 `pydantic_settings`） → Pyright 未指定 `.venv` 解释器而使用了系统全局 Python → 执行时显式传入 `--pythonpath .venv\Scripts\python.exe`。
 - **[环境/Asyncio]** 在 Windows 沙盒内直接运行 `asyncio.run` 或 `@pytest.mark.anyio` 异步单测会挂起 → 沙盒网络隔离拦截了事件循环初始化的本地 `socketpair` → 运行含异步事件循环的 `pytest` 时需使用 `BypassSandbox: true`（或在沙盒外执行）。
+- **[联调/中台工单鉴权]** 客户态调用 `POST /api/v1/support/tickets` 未传 `X-Operator-No` 报 `403 EMPLOYEE_NOT_AVAILABLE` → 中台 `current_employee(ctx)` 在缺省 `X-Operator-No` 时会回退用 `customer_no` 查 `dim_employee` 表 → 建单请求需透传有效默认员工号请求头 `X-Operator-No: EMP000001`。
+- **[联调/NLU上下文边界]** 注入“当前活跃任务”上下文时，LLM 易将历史活跃任务重复放入 `intents` 触发多意图冲突 → NLU Prompt 需明确限定仅针对【本轮用户输入】识别意图，且多知识库主题咨询合并为单意图。
